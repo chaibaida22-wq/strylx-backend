@@ -1,7 +1,14 @@
 import express from "express";
+
 import userController from "./user.controller.js";
 
+
 const router = express.Router();
+
+
+// =================================
+// SWAGGER
+// =================================
 
 /**
  * @swagger
@@ -10,20 +17,81 @@ const router = express.Router();
  *   description: Gestion des utilisateurs
  */
 
+
+// =================================
+// GET ALL USERS
+// =================================
+
 /**
  * @swagger
  * /api/users:
  *   get:
- *     summary: Récupérer tous les utilisateurs
+ *     summary: Récupérer tous les utilisateurs actifs
  *     tags: [Users]
  *     responses:
  *       200:
  *         description: Liste des utilisateurs récupérée avec succès.
  */
+
 router.get(
     "/",
     userController.getUsers
 );
+
+
+// =================================
+// GET ARCHIVED USERS
+// =================================
+
+/**
+ * @swagger
+ * /api/users/archived:
+ *   get:
+ *     summary: Récupérer les utilisateurs archivés
+ *     tags: [Users]
+ *     responses:
+ *       200:
+ *         description: Liste des utilisateurs archivés.
+ */
+
+router.get(
+    "/archived",
+    userController.getArchivedUsers
+);
+
+
+// =================================
+// RESTORE USER
+// =================================
+
+/**
+ * @swagger
+ * /api/users/{id}/restore:
+ *   patch:
+ *     summary: Réactiver un utilisateur archivé
+ *     tags: [Users]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Utilisateur réactivé avec succès.
+ *       404:
+ *         description: Utilisateur introuvable.
+ */
+
+router.patch(
+    "/:id/restore",
+    userController.restoreUser
+);
+
+
+// =================================
+// GET USER BY ID
+// =================================
 
 /**
  * @swagger
@@ -37,17 +105,22 @@ router.get(
  *         required: true
  *         schema:
  *           type: string
- *         description: ID MongoDB de l'utilisateur
  *     responses:
  *       200:
- *         description: Utilisateur trouvé
+ *         description: Utilisateur trouvé.
  *       404:
- *         description: Utilisateur introuvable
+ *         description: Utilisateur introuvable.
  */
+
 router.get(
     "/:id",
     userController.getUser
 );
+
+
+// =================================
+// UPDATE USER
+// =================================
 
 /**
  * @swagger
@@ -61,33 +134,29 @@ router.get(
  *         required: true
  *         schema:
  *           type: string
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               username:
- *                 type: string
- *               email:
- *                 type: string
  *     responses:
  *       200:
- *         description: Utilisateur modifié avec succès
+ *         description: Utilisateur modifié avec succès.
  *       404:
- *         description: Utilisateur introuvable
+ *         description: Utilisateur introuvable.
  */
+
 router.put(
     "/:id",
     userController.updateUser
 );
 
+
+// =================================
+// ARCHIVE USER
+// =================================
+
 /**
  * @swagger
  * /api/users/{id}:
  *   delete:
- *     summary: Supprimer un utilisateur
+ *     summary: Archiver un utilisateur
+ *     description: L'utilisateur n'est pas supprimé définitivement. Son compte est archivé.
  *     tags: [Users]
  *     parameters:
  *       - in: path
@@ -97,13 +166,15 @@ router.put(
  *           type: string
  *     responses:
  *       200:
- *         description: Utilisateur supprimé avec succès
+ *         description: Utilisateur archivé avec succès.
  *       404:
- *         description: Utilisateur introuvable
+ *         description: Utilisateur introuvable.
  */
+
 router.delete(
     "/:id",
     userController.deleteUser
 );
+
 
 export default router;

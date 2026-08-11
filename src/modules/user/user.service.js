@@ -1,38 +1,135 @@
 import User from "./user.model.js";
 
-const getAllUsers = async()=>{
 
-    return await User.find().select("-password");
+// =================================
+// GET ALL USERS
+// =================================
 
+const getAllUsers = async (includeArchived = false) => {
+
+    const filter = {};
+
+    if (!includeArchived) {
+        filter.isArchived = false;
+    }
+
+    return await User
+        .find(filter)
+        .select("-password")
+        .sort({
+            createdAt: -1
+        });
 };
 
-const getUserById = async(id)=>{
 
-    return await User.findById(id).select("-password");
+// =================================
+// GET USER BY ID
+// =================================
 
+const getUserById = async (id) => {
+
+    return await User
+        .findById(id)
+        .select("-password");
 };
 
-const updateUser = async(id,data)=>{
+
+// =================================
+// UPDATE USER
+// =================================
+
+const updateUser = async (id, data) => {
+
+    return await User
+        .findByIdAndUpdate(
+            id,
+            data,
+            {
+                new: true,
+                runValidators: true
+            }
+        )
+        .select("-password");
+};
+
+
+// =================================
+// ARCHIVE USER
+// =================================
+
+const deleteUser = async (id, archivedBy = null) => {
 
     return await User.findByIdAndUpdate(
+
         id,
-        data,
-        {new:true}
+
+        {
+            isArchived: true,
+            archivedAt: new Date(),
+            archivedBy: archivedBy
+        },
+
+        {
+            new: true
+        }
+
     ).select("-password");
-
 };
 
-const deleteUser = async(id)=>{
 
-    return await User.findByIdAndDelete(id);
+// =================================
+// RESTORE USER
+// =================================
 
+const restoreUser = async (id) => {
+
+    return await User.findByIdAndUpdate(
+
+        id,
+
+        {
+            isArchived: false,
+            archivedAt: null,
+            archivedBy: null
+        },
+
+        {
+            new: true
+        }
+
+    ).select("-password");
 };
 
-export default{
+
+// =================================
+// GET ARCHIVED USERS
+// =================================
+
+const getArchivedUsers = async () => {
+
+    return await User
+        .find({
+            isArchived: true
+        })
+        .select("-password")
+        .sort({
+            archivedAt: -1
+        });
+};
+
+
+export default {
 
     getAllUsers,
+
     getUserById,
+
     updateUser,
-    deleteUser
+
+    deleteUser,
+
+    restoreUser,
+
+    getArchivedUsers
 
 };

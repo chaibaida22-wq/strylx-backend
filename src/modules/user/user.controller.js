@@ -1,103 +1,319 @@
 import userService from "./user.service.js";
 
-const getUsers = async(req,res)=>{
 
-    try{
+// =================================
+// GET USERS
+// =================================
 
-        const users = await userService.getAllUsers();
+const getUsers = async (req, res) => {
 
-        res.json(users);
+    try {
+
+        const includeArchived =
+            req.query.archived === "true";
+
+
+        const users =
+            await userService.getAllUsers(
+                includeArchived
+            );
+
+
+        res.status(200).json({
+
+            success: true,
+
+            count: users.length,
+
+            users
+
+        });
 
     }
 
-    catch(error){
+    catch (error) {
 
         res.status(500).json({
-            message:error.message
+
+            success: false,
+
+            message: error.message
+
         });
 
     }
 
 };
 
-const getUser = async(req,res)=>{
 
-    try{
+// =================================
+// GET USER
+// =================================
 
-        const user = await userService.getUserById(req.params.id);
+const getUser = async (req, res) => {
 
-        if(!user){
+    try {
+
+        const user =
+            await userService.getUserById(
+                req.params.id
+            );
+
+
+        if (!user) {
 
             return res.status(404).json({
-                message:"Utilisateur introuvable"
+
+                success: false,
+
+                message: "Utilisateur introuvable"
+
             });
 
         }
 
-        res.json(user);
+
+        res.status(200).json({
+
+            success: true,
+
+            user
+
+        });
 
     }
 
-    catch(error){
+    catch (error) {
 
         res.status(500).json({
-            message:error.message
+
+            success: false,
+
+            message: error.message
+
         });
 
     }
 
 };
 
-const updateUser = async(req,res)=>{
 
-    try{
+// =================================
+// UPDATE USER
+// =================================
 
-        const user = await userService.updateUser(
-            req.params.id,
-            req.body
-        );
+const updateUser = async (req, res) => {
 
-        res.json(user);
+    try {
+
+        const user =
+            await userService.updateUser(
+                req.params.id,
+                req.body
+            );
+
+
+        if (!user) {
+
+            return res.status(404).json({
+
+                success: false,
+
+                message: "Utilisateur introuvable"
+
+            });
+
+        }
+
+
+        res.status(200).json({
+
+            success: true,
+
+            message: "Utilisateur modifié avec succès",
+
+            user
+
+        });
 
     }
 
-    catch(error){
+    catch (error) {
 
         res.status(500).json({
-            message:error.message
+
+            success: false,
+
+            message: error.message
+
         });
 
     }
 
 };
 
-const deleteUser = async(req,res)=>{
 
-    try{
+// =================================
+// ARCHIVE USER
+// =================================
 
-        await userService.deleteUser(req.params.id);
+const deleteUser = async (req, res) => {
 
-        res.json({
-            message:"Utilisateur supprimé"
+    try {
+
+        const user =
+            await userService.deleteUser(
+                req.params.id
+            );
+
+
+        if (!user) {
+
+            return res.status(404).json({
+
+                success: false,
+
+                message: "Utilisateur introuvable"
+
+            });
+
+        }
+
+
+        res.status(200).json({
+
+            success: true,
+
+            message:
+                "Utilisateur archivé avec succès",
+
+            user
+
         });
 
     }
 
-    catch(error){
+    catch (error) {
 
         res.status(500).json({
-            message:error.message
+
+            success: false,
+
+            message: error.message
+
         });
 
     }
 
 };
 
-export default{
+
+// =================================
+// RESTORE USER
+// =================================
+
+const restoreUser = async (req, res) => {
+
+    try {
+
+        const user =
+            await userService.restoreUser(
+                req.params.id
+            );
+
+
+        if (!user) {
+
+            return res.status(404).json({
+
+                success: false,
+
+                message: "Utilisateur introuvable"
+
+            });
+
+        }
+
+
+        res.status(200).json({
+
+            success: true,
+
+            message:
+                "Utilisateur réactivé avec succès",
+
+            user
+
+        });
+
+    }
+
+    catch (error) {
+
+        res.status(500).json({
+
+            success: false,
+
+            message: error.message
+
+        });
+
+    }
+
+};
+
+
+// =================================
+// GET ARCHIVED USERS
+// =================================
+
+const getArchivedUsers = async (req, res) => {
+
+    try {
+
+        const users =
+            await userService.getArchivedUsers();
+
+
+        res.status(200).json({
+
+            success: true,
+
+            count: users.length,
+
+            users
+
+        });
+
+    }
+
+    catch (error) {
+
+        res.status(500).json({
+
+            success: false,
+
+            message: error.message
+
+        });
+
+    }
+
+};
+
+
+export default {
 
     getUsers,
+
     getUser,
+
     updateUser,
-    deleteUser
+
+    deleteUser,
+
+    restoreUser,
+
+    getArchivedUsers
 
 };

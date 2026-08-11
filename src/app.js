@@ -5,37 +5,38 @@ import morgan from "morgan";
 import path from "path";
 import { fileURLToPath } from "url";
 
-
 import { swaggerUi, specs } from "./config/swagger.js";
 
+
+// =================================
+// ROUTES
+// =================================
 
 import userRoutes from "./modules/user/user.routes.js";
 import authRoutes from "./modules/auth/auth.routes.js";
 import profileRoutes from "./modules/profile/profile.routes.js";
-
-
-import errorMiddleware from "./middlewares/error.middleware.js";
 import progressRoutes from "./modules/progress/progress.routes.js";
 import challengeRoutes from "./modules/challenge/challenge.routes.js";
 import eventRoutes from "./modules/event/event.routes.js";
+import newsletterRoutes from "./modules/newsletter/newsletter.routes.js";
 
+
+// =================================
+// MIDDLEWARES
+// =================================
+
+import errorMiddleware from "./middlewares/error.middleware.js";
 
 
 const app = express();
-
-
 
 
 // =================================
 // PATH POUR UPLOADS
 // =================================
 
-
 const __filename = fileURLToPath(import.meta.url);
-
 const __dirname = path.dirname(__filename);
-
-
 
 const uploadPath = path.join(
     __dirname,
@@ -43,81 +44,58 @@ const uploadPath = path.join(
 );
 
 
-
-
-
 // =================================
 // MIDDLEWARES GENERAUX
 // =================================
 
-
+// CORS
 app.use(
     cors({
-        origin:"http://localhost:5173",
-        credentials:true
+        origin: "http://localhost:5173",
+        credentials: true
     })
 );
 
 
-
+// HELMET
 app.use(
-
     helmet({
-
-        crossOriginResourcePolicy:false
-
+        crossOriginResourcePolicy: false
     })
-
 );
 
 
-
+// MORGAN
 app.use(
     morgan("dev")
 );
 
 
-
+// JSON
 app.use(
     express.json()
 );
 
 
-
+// FORM DATA
 app.use(
-
     express.urlencoded({
-
-        extended:true
-
+        extended: true
     })
-
 );
-
-
-
 
 
 // =================================
 // SERVIR LES IMAGES
 // =================================
 
-
-// Exemple:
+// Exemple :
 // http://localhost:5000/uploads/image.png
 
-
 app.use(
-
     "/uploads",
-
     express.static(uploadPath)
-
 );
-
-
-
-
 
 
 // =================================
@@ -125,134 +103,110 @@ app.use(
 // =================================
 
 
-
+// AUTH
 app.use(
-
     "/api/auth",
-
     authRoutes
-
 );
 
 
-
+// USERS
 app.use(
-
     "/api/users",
-
     userRoutes
-
 );
 
 
-
+// PROFILE
 app.use(
-
     "/api/profile",
-
     profileRoutes
-
 );
 
 
-
-
+// PROGRESS
 app.use(
-
-"/api/progress",
-
-progressRoutes
-
+    "/api/progress",
+    progressRoutes
 );
 
+
+// CHALLENGES
 app.use(
     "/api/challenges",
     challengeRoutes
 );
 
+
+// EVENTS
 app.use(
     "/api/events",
     eventRoutes
 );
 
+
+// NEWSLETTER
+app.use(
+    "/api/newsletter",
+    newsletterRoutes
+);
+
+
 // =================================
 // SWAGGER
 // =================================
 
-
 app.use(
-
     "/api-docs",
-
     swaggerUi.serve,
-
     swaggerUi.setup(specs)
-
 );
-
-
-
-
 
 
 // =================================
 // TEST API
 // =================================
 
+app.get(
+    "/",
+    (req, res) => {
 
-app.get("/",(req,res)=>{
+        res.status(200).json({
+            success: true,
+            message: "Bienvenue sur STRYL'X API"
+        });
 
-
-    res.status(200).json({
-
-        success:true,
-
-        message:"Bienvenue sur STRYL'X API "
-
-    });
-
-
-});
-
-
-
-
+    }
+);
 
 
 // =================================
 // TEST UPLOAD
 // =================================
 
+app.get(
+    "/test-upload",
+    (req, res) => {
 
-app.get("/test-upload",(req,res)=>{
+        res.status(200).json({
 
+            success: true,
 
-    res.json({
+            message: "Upload folder accessible",
 
-        message:"Upload folder accessible",
+            path: uploadPath
 
-        path:uploadPath
+        });
 
-    });
-
-
-});
-
-
-
-
-
+    }
+);
 
 
 // =================================
-// GESTION ERREURS
+// GESTION DES ERREURS
 // =================================
-
 
 app.use(errorMiddleware);
-
-
-
 
 
 export default app;

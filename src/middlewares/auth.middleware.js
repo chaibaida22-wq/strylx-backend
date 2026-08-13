@@ -1,36 +1,128 @@
 import jwt from "jsonwebtoken";
 
-const authMiddleware = (req, res, next) => {
+
+// =====================================================
+// AUTHENTICATION MIDDLEWARE
+// =====================================================
+
+const authenticate = (req, res, next) => {
+
     try {
 
-        const authHeader = req.headers.authorization;
+        // =========================================
+        // RECUPERER LE HEADER AUTHORIZATION
+        // =========================================
 
-        if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        const authHeader =
+            req.headers.authorization;
+
+
+        // =========================================
+        // VERIFIER LE HEADER
+        // =========================================
+
+        if (!authHeader) {
+
             return res.status(401).json({
+
                 success: false,
-                message: "Token manquant"
+
+                message:
+                    "Authentification requise."
+
             });
+
         }
 
-        const token = authHeader.split(" ")[1];
 
-        const decoded = jwt.verify(
-            token,
-            process.env.JWT_SECRET
-        );
+        // =========================================
+        // VERIFIER BEARER
+        // =========================================
+
+        if (
+            !authHeader.startsWith("Bearer ")
+        ) {
+
+            return res.status(401).json({
+
+                success: false,
+
+                message:
+                    "Format du token invalide."
+
+            });
+
+        }
+
+
+        // =========================================
+        // EXTRAIRE TOKEN
+        // =========================================
+
+        const token =
+            authHeader.split(" ")[1];
+
+
+        if (!token) {
+
+            return res.status(401).json({
+
+                success: false,
+
+                message:
+                    "Token manquant."
+
+            });
+
+        }
+
+
+        // =========================================
+        // VERIFIER JWT
+        // =========================================
+
+        const decoded =
+            jwt.verify(
+                token,
+                process.env.JWT_SECRET
+            );
+
+
+        // =========================================
+        // AJOUTER USER A LA REQUETE
+        // =========================================
 
         req.user = decoded;
 
+
+        // =========================================
+        // CONTINUER
+        // =========================================
+
         next();
 
-    } catch (error) {
+    }
+
+    catch (error) {
+
+        console.error(
+            "Erreur authentication :",
+            error.message
+        );
+
 
         return res.status(401).json({
+
             success: false,
-            message: "Token invalide"
+
+            message:
+                "Token invalide ou expiré."
+
         });
 
     }
+
 };
 
-export default authMiddleware;
+
+export default authenticate;

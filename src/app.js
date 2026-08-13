@@ -1,3 +1,16 @@
+import dotenv from "dotenv";
+
+// =====================================================
+// CHARGER LES VARIABLES D'ENVIRONNEMENT
+// =====================================================
+
+dotenv.config();
+
+
+// =====================================================
+// IMPORTS
+// =====================================================
+
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -5,92 +18,139 @@ import morgan from "morgan";
 import path from "path";
 import { fileURLToPath } from "url";
 
-import { swaggerUi, specs } from "./config/swagger.js";
+import {
+    swaggerUi,
+    specs
+} from "./config/swagger.js";
 
 
-// =================================
+// =====================================================
 // ROUTES
-// =================================
+// =====================================================
 
-import userRoutes from "./modules/user/user.routes.js";
-import authRoutes from "./modules/auth/auth.routes.js";
-import profileRoutes from "./modules/profile/profile.routes.js";
-import progressRoutes from "./modules/progress/progress.routes.js";
-import challengeRoutes from "./modules/challenge/challenge.routes.js";
-import eventRoutes from "./modules/event/event.routes.js";
-import newsletterRoutes from "./modules/newsletter/newsletter.routes.js";
+import userRoutes
+    from "./modules/user/routes/user.routes.js";
+
+import authRoutes
+    from "./modules/auth/routes/auth.routes.js";
+
+import profileRoutes
+    from "./modules/profile/profile.routes.js";
+
+import progressRoutes
+    from "./modules/progress/progress.routes.js";
+
+import challengeRoutes
+    from "./modules/challenge/challenge.routes.js";
+
+import eventRoutes
+    from "./modules/event/event.routes.js";
+
+import newsletterRoutes
+    from "./modules/newsletter/newsletter.routes.js";
 
 
-// =================================
+// =====================================================
 // MIDDLEWARES
-// =================================
+// =====================================================
 
-import errorMiddleware from "./middlewares/error.middleware.js";
+import errorMiddleware
+    from "./middlewares/error.middleware.js";
 
+
+// =====================================================
+// APP
+// =====================================================
 
 const app = express();
 
 
-// =================================
+// =====================================================
 // PATH POUR UPLOADS
-// =================================
+// =====================================================
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __filename =
+    fileURLToPath(import.meta.url);
 
-const uploadPath = path.join(
-    __dirname,
-    "../uploads"
-);
+const __dirname =
+    path.dirname(__filename);
+
+const uploadPath =
+    path.join(
+        __dirname,
+        "../uploads"
+    );
 
 
-// =================================
+// =====================================================
 // MIDDLEWARES GENERAUX
-// =================================
+// =====================================================
 
+
+// -----------------------------------------------------
 // CORS
+// -----------------------------------------------------
+
 app.use(
     cors({
-        origin: "http://localhost:5173",
+
+        origin:
+            process.env.FRONTEND_URL ||
+            "http://localhost:5173",
+
         credentials: true
+
     })
 );
 
 
+// -----------------------------------------------------
 // HELMET
+// -----------------------------------------------------
+
 app.use(
     helmet({
+
         crossOriginResourcePolicy: false
+
     })
 );
 
 
+// -----------------------------------------------------
 // MORGAN
+// -----------------------------------------------------
+
 app.use(
     morgan("dev")
 );
 
 
+// -----------------------------------------------------
 // JSON
+// -----------------------------------------------------
+
 app.use(
     express.json()
 );
 
 
+// -----------------------------------------------------
 // FORM DATA
+// -----------------------------------------------------
+
 app.use(
     express.urlencoded({
+
         extended: true
+
     })
 );
 
 
-// =================================
+// =====================================================
 // SERVIR LES IMAGES
-// =================================
-
-// Exemple :
-// http://localhost:5000/uploads/image.png
+// =====================================================
 
 app.use(
     "/uploads",
@@ -98,63 +158,84 @@ app.use(
 );
 
 
-// =================================
+// =====================================================
 // ROUTES API
-// =================================
+// =====================================================
 
 
+// -----------------------------------------------------
 // AUTH
+// -----------------------------------------------------
+
 app.use(
     "/api/auth",
     authRoutes
 );
 
 
+// -----------------------------------------------------
 // USERS
+// -----------------------------------------------------
+
 app.use(
     "/api/users",
     userRoutes
 );
 
 
+// -----------------------------------------------------
 // PROFILE
+// -----------------------------------------------------
+
 app.use(
     "/api/profile",
     profileRoutes
 );
 
 
+// -----------------------------------------------------
 // PROGRESS
+// -----------------------------------------------------
+
 app.use(
     "/api/progress",
     progressRoutes
 );
 
 
+// -----------------------------------------------------
 // CHALLENGES
+// -----------------------------------------------------
+
 app.use(
     "/api/challenges",
     challengeRoutes
 );
 
 
+// -----------------------------------------------------
 // EVENTS
+// -----------------------------------------------------
+
 app.use(
     "/api/events",
     eventRoutes
 );
 
 
+// -----------------------------------------------------
 // NEWSLETTER
+// -----------------------------------------------------
+
 app.use(
     "/api/newsletter",
     newsletterRoutes
 );
 
 
-// =================================
+// =====================================================
 // SWAGGER
-// =================================
+// =====================================================
 
 app.use(
     "/api-docs",
@@ -163,26 +244,30 @@ app.use(
 );
 
 
-// =================================
+// =====================================================
 // TEST API
-// =================================
+// =====================================================
 
 app.get(
     "/",
     (req, res) => {
 
         res.status(200).json({
+
             success: true,
-            message: "Bienvenue sur STRYL'X API"
+
+            message:
+                "Bienvenue sur STRYL'X API"
+
         });
 
     }
 );
 
 
-// =================================
+// =====================================================
 // TEST UPLOAD
-// =================================
+// =====================================================
 
 app.get(
     "/test-upload",
@@ -192,9 +277,11 @@ app.get(
 
             success: true,
 
-            message: "Upload folder accessible",
+            message:
+                "Upload folder accessible",
 
-            path: uploadPath
+            path:
+                uploadPath
 
         });
 
@@ -202,11 +289,17 @@ app.get(
 );
 
 
-// =================================
+// =====================================================
 // GESTION DES ERREURS
-// =================================
+// =====================================================
 
-app.use(errorMiddleware);
+app.use(
+    errorMiddleware
+);
 
+
+// =====================================================
+// EXPORT
+// =====================================================
 
 export default app;

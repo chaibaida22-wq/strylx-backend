@@ -5,6 +5,7 @@ import crypto from "crypto";
 import User from "../user/models/user.model.js";
 import emailService from "./email.service.js";
 
+
 // =====================================================
 // CONFIGURATION
 // =====================================================
@@ -17,6 +18,16 @@ const JWT_EXPIRES_IN =
 const FRONTEND_URL =
     process.env.FRONTEND_URL ||
     "http://localhost:5173";
+
+const GOOGLE_CLIENT_ID =
+    process.env.GOOGLE_CLIENT_ID;
+
+const GOOGLE_CLIENT_SECRET =
+    process.env.GOOGLE_CLIENT_SECRET;
+
+const GOOGLE_CALLBACK_URL =
+    process.env.GOOGLE_CALLBACK_URL ||
+    "http://localhost:5000/api/auth/google/callback";
 
 
 // =====================================================
@@ -42,12 +53,80 @@ const createError = (
 
 
 // =====================================================
+// JWT
+// =====================================================
+
+const generateJWT = (user) => {
+
+    if (!JWT_SECRET) {
+
+        throw createError(
+            "JWT_SECRET n'est pas configuré.",
+            500
+        );
+
+    }
+
+    return jwt.sign(
+
+        {
+            id: user._id.toString(),
+            role: user.role
+        },
+
+        JWT_SECRET,
+
+        {
+            expiresIn: JWT_EXPIRES_IN
+        }
+
+    );
+};
+
+
+// =====================================================
+// USER RESPONSE
+// =====================================================
+
+const formatUser = (user) => {
+
+    return {
+
+        id: user._id,
+
+        firstname: user.firstname,
+
+        lastname: user.lastname,
+
+        email: user.email,
+
+        birthdate: user.birthdate,
+
+        gender: user.gender,
+
+        mainActivity: user.mainActivity,
+
+        country: user.country,
+
+        profileImage: user.profileImage,
+
+        role: user.role,
+
+        isEmailVerified: user.isEmailVerified
+
+    };
+
+};
+
+
+// =====================================================
 // CALCUL AGE
 // =====================================================
 
 const calculateAge = (birthdate) => {
 
     const birth = new Date(birthdate);
+
     const today = new Date();
 
     let age =
@@ -65,7 +144,9 @@ const calculateAge = (birthdate) => {
             today.getDate() < birth.getDate()
         )
     ) {
+
         age--;
+
     }
 
     return age;
@@ -73,10 +154,13 @@ const calculateAge = (birthdate) => {
 
 
 // =====================================================
-// REGISTER
+// REGISTER CLASSIQUE
 // =====================================================
 
-const register = async (userData) => {
+const register = async (
+    userData,
+    profileImage = null
+) => {
 
     const {
         firstname,
@@ -91,18 +175,15 @@ const register = async (userData) => {
     } = userData;
 
 
-    // =================================================
-    // VALIDATION
-    // =================================================
-
     if (
         typeof firstname !== "string" ||
         !firstname.trim()
     ) {
+
         throw createError(
-            "Le prénom est obligatoire.",
-            400
+            "Le prénom est obligatoire."
         );
+
     }
 
 
@@ -110,10 +191,11 @@ const register = async (userData) => {
         typeof lastname !== "string" ||
         !lastname.trim()
     ) {
+
         throw createError(
-            "Le nom est obligatoire.",
-            400
+            "Le nom est obligatoire."
         );
+
     }
 
 
@@ -121,10 +203,11 @@ const register = async (userData) => {
         typeof email !== "string" ||
         !email.trim()
     ) {
+
         throw createError(
-            "L'adresse email est obligatoire.",
-            400
+            "L'adresse email est obligatoire."
         );
+
     }
 
 
@@ -132,11 +215,14 @@ const register = async (userData) => {
         /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 
-    if (!emailRegex.test(email.trim())) {
+    if (
+        !emailRegex.test(
+            email.trim()
+        )
+    ) {
 
         throw createError(
-            "L'adresse email n'est pas valide.",
-            400
+            "L'adresse email n'est pas valide."
         );
 
     }
@@ -145,8 +231,7 @@ const register = async (userData) => {
     if (!password) {
 
         throw createError(
-            "Le mot de passe est obligatoire.",
-            400
+            "Le mot de passe est obligatoire."
         );
 
     }
@@ -155,8 +240,7 @@ const register = async (userData) => {
     if (password.length < 8) {
 
         throw createError(
-            "Le mot de passe doit contenir au moins 8 caractères.",
-            400
+            "Le mot de passe doit contenir au moins 8 caractères."
         );
 
     }
@@ -168,8 +252,7 @@ const register = async (userData) => {
     ) {
 
         throw createError(
-            "Les mots de passe ne correspondent pas.",
-            400
+            "Les mots de passe ne correspondent pas."
         );
 
     }
@@ -178,18 +261,79 @@ const register = async (userData) => {
     if (!birthdate) {
 
         throw createError(
-            "La date de naissance est obligatoire.",
-            400
+            "La date de naissance est obligatoire."
         );
 
     }
 
 
+    const birthDateObject =
+        new Date(
+            `${birthdate}T00:00:00`
+        );
+
+
+    if (
+        Number.isNaN(
+            birthDateObject.getTime()
+        )
+    ) {
+
+        throw createError(
+            "Date de naissance invalide."
+        );
+
+    }
+
+
+    if (
+        birthDateObject > new Date()
+    ) {
+
+        throw createError(
+            "La date de naissance ne peut pas être dans le futur."
+        );
+
+    }
+
+
+    const age =
+        calculateAge(
+            birthDateObject
+        );
+
+
+    if (age < 18) {
+
+        throw createError(
+            "L'inscription est réservée aux personnes âgées de 18 ans ou plus."
+        );
+
+    }
+
+
+    const allowedGenders = [
+        "homme",
+        "femme",
+        "non-binaire"
+    ];
+
+
     if (!gender) {
 
         throw createError(
-            "Le sexe est obligatoire.",
-            400
+            "Le sexe est obligatoire."
+        );
+
+    }
+
+
+    if (
+        !allowedGenders.includes(gender)
+    ) {
+
+        throw createError(
+            "Genre invalide."
         );
 
     }
@@ -198,8 +342,7 @@ const register = async (userData) => {
     if (!mainActivity) {
 
         throw createError(
-            "L'activité principale est obligatoire.",
-            400
+            "L'activité principale est obligatoire."
         );
 
     }
@@ -208,32 +351,25 @@ const register = async (userData) => {
     if (!country) {
 
         throw createError(
-            "Le pays est obligatoire.",
-            400
+            "Le pays est obligatoire."
         );
 
     }
 
-
-    // =================================================
-    // NORMALISATION
-    // =================================================
 
     const normalizedEmail =
         email
             .trim()
             .toLowerCase();
 
+
     const normalizedFirstname =
         firstname.trim();
+
 
     const normalizedLastname =
         lastname.trim();
 
-
-    // =================================================
-    // USER EXISTANT
-    // =================================================
 
     const existingUser =
         await User.findOne({
@@ -253,154 +389,14 @@ const register = async (userData) => {
 
         }
 
-
-        // Si le compte existe mais n'est pas vérifié,
-        // on génère un nouveau token.
-
-        const verificationToken =
-            crypto
-                .randomBytes(32)
-                .toString("hex");
-
-        const verificationExpires =
-            new Date(
-                Date.now() +
-                24 * 60 * 60 * 1000
-            );
-
-
-        existingUser.emailVerificationToken =
-            verificationToken;
-
-        existingUser.emailVerificationExpires =
-            verificationExpires;
-
-
-        await existingUser.save();
-
-
-        const verificationUrl =
-            `${FRONTEND_URL}/verify-email/${verificationToken}`;
-
-
-        console.log("=================================");
-        console.log("🔄 NOUVEAU TOKEN");
-        console.log("EMAIL :", normalizedEmail);
-        console.log("TOKEN :", verificationToken);
-        console.log("URL :", verificationUrl);
-        console.log("EXPIRE :", verificationExpires);
-        console.log("=================================");
-
-
-        try {
-
-            await emailService.sendVerificationEmail({
-
-                email: existingUser.email,
-
-                firstname: existingUser.firstname,
-
-                verificationUrl
-
-            });
-
-        } catch (emailError) {
-
-            console.error(
-                "❌ ERREUR ENVOI EMAIL :",
-                emailError
-            );
-
-            throw createError(
-                "Impossible d'envoyer l'email de vérification.",
-                500
-            );
-
-        }
-
-
-        return {
-
-            message:
-                "Un nouveau lien de vérification a été envoyé à votre adresse email.",
-
-            user: {
-
-                id: existingUser._id,
-
-                firstname: existingUser.firstname,
-
-                lastname: existingUser.lastname,
-
-                email: existingUser.email,
-
-                isEmailVerified:
-                    existingUser.isEmailVerified
-
-            }
-
-        };
-
-    }
-
-
-    // =================================================
-    // DATE NAISSANCE
-    // =================================================
-
-    const birthDateObject =
-        new Date(`${birthdate}T00:00:00`);
-
-
-    if (
-        Number.isNaN(
-            birthDateObject.getTime()
-        )
-    ) {
-
         throw createError(
-            "Date de naissance invalide.",
-            400
+            "Un compte existe déjà avec cette adresse email mais n'est pas encore vérifié.",
+            409,
+            "EMAIL_NOT_VERIFIED"
         );
 
     }
 
-
-    if (
-        birthDateObject > new Date()
-    ) {
-
-        throw createError(
-            "La date de naissance ne peut pas être dans le futur.",
-            400
-        );
-
-    }
-
-
-    // =================================================
-    // AGE
-    // =================================================
-
-    const age =
-        calculateAge(
-            birthDateObject
-        );
-
-
-    if (age < 18) {
-
-        throw createError(
-            "L'inscription est réservée aux personnes âgées de 18 ans ou plus.",
-            400
-        );
-
-    }
-
-
-    // =================================================
-    // PASSWORD HASH
-    // =================================================
 
     const hashedPassword =
         await bcrypt.hash(
@@ -408,10 +404,6 @@ const register = async (userData) => {
             12
         );
 
-
-    // =================================================
-    // VERIFICATION TOKEN
-    // =================================================
 
     const emailVerificationToken =
         crypto
@@ -426,20 +418,16 @@ const register = async (userData) => {
         );
 
 
-    console.log("=================================");
-    console.log("🔐 NOUVEAU TOKEN VERIFICATION");
-    console.log("EMAIL :", normalizedEmail);
-    console.log("TOKEN :", emailVerificationToken);
-    console.log(
-        "EXPIRE :",
-        emailVerificationExpires
-    );
-    console.log("=================================");
+    let profileImagePath = null;
 
 
-    // =================================================
-    // CREATE USER
-    // =================================================
+    if (profileImage) {
+
+        profileImagePath =
+            `/uploads/${profileImage.filename}`;
+
+    }
+
 
     const user =
         await User.create({
@@ -465,6 +453,9 @@ const register = async (userData) => {
 
             country,
 
+            profileImage:
+                profileImagePath,
+
             role:
                 "user",
 
@@ -478,23 +469,9 @@ const register = async (userData) => {
         });
 
 
-    // =================================================
-    // VERIFICATION URL
-    // =================================================
-
     const verificationUrl =
         `${FRONTEND_URL}/verify-email/${emailVerificationToken}`;
 
-
-    console.log("=================================");
-    console.log("📩 VERIFICATION URL");
-    console.log(verificationUrl);
-    console.log("=================================");
-
-
-    // =================================================
-    // SEND EMAIL
-    // =================================================
 
     try {
 
@@ -510,28 +487,13 @@ const register = async (userData) => {
 
         });
 
+    }
 
-        console.log(
-            "✅ EMAIL ENVOYÉ À :",
-            user.email
-        );
-
-
-    } catch (emailError) {
-
-        console.error(
-            "❌ EMAIL VERIFICATION ERROR :",
-            emailError
-        );
-
-
-        // On supprime le compte si l'email
-        // n'a pas pu être envoyé.
+    catch (error) {
 
         await User.findByIdAndDelete(
             user._id
         );
-
 
         throw createError(
             "Impossible d'envoyer l'email de vérification.",
@@ -541,48 +503,10 @@ const register = async (userData) => {
     }
 
 
-    // =================================================
-    // RESPONSE
-    // =================================================
-
     return {
 
-        message:
-            "Compte créé avec succès. Un email de vérification vous a été envoyé.",
-
-        user: {
-
-            id:
-                user._id,
-
-            firstname:
-                user.firstname,
-
-            lastname:
-                user.lastname,
-
-            email:
-                user.email,
-
-            birthdate:
-                user.birthdate,
-
-            gender:
-                user.gender,
-
-            mainActivity:
-                user.mainActivity,
-
-            country:
-                user.country,
-
-            role:
-                user.role,
-
-            isEmailVerified:
-                user.isEmailVerified
-
-        }
+        user:
+            formatUser(user)
 
     };
 
@@ -590,7 +514,7 @@ const register = async (userData) => {
 
 
 // =====================================================
-// LOGIN
+// LOGIN CLASSIQUE
 // =====================================================
 
 const login = async (
@@ -604,8 +528,7 @@ const login = async (
     ) {
 
         throw createError(
-            "L'adresse email est obligatoire.",
-            400
+            "L'adresse email est obligatoire."
         );
 
     }
@@ -614,8 +537,7 @@ const login = async (
     if (!password) {
 
         throw createError(
-            "Le mot de passe est obligatoire.",
-            400
+            "Le mot de passe est obligatoire."
         );
 
     }
@@ -638,6 +560,21 @@ const login = async (
         throw createError(
             "Email ou mot de passe incorrect.",
             401
+        );
+
+    }
+
+
+    /*
+     * Un compte Google peut ne pas avoir de mot de passe.
+     */
+
+    if (!user.password) {
+
+        throw createError(
+            "Ce compte utilise la connexion Google.",
+            401,
+            "GOOGLE_ACCOUNT"
         );
 
     }
@@ -671,88 +608,857 @@ const login = async (
     }
 
 
-    if (!JWT_SECRET) {
-
-        throw createError(
-            "JWT_SECRET n'est pas configuré.",
-            500
-        );
-
-    }
-
-
     const token =
-        jwt.sign(
-
-            {
-                id:
-                    user._id.toString(),
-
-                role:
-                    user.role
-
-            },
-
-            JWT_SECRET,
-
-            {
-                expiresIn:
-                    JWT_EXPIRES_IN
-            }
-
-        );
+        generateJWT(user);
 
 
     return {
 
         token,
 
-        user: {
-
-            id:
-                user._id,
-
-            firstname:
-                user.firstname,
-
-            lastname:
-                user.lastname,
-
-            email:
-                user.email,
-
-            birthdate:
-                user.birthdate,
-
-            gender:
-                user.gender,
-
-            mainActivity:
-                user.mainActivity,
-
-            country:
-                user.country,
-
-            role:
-                user.role,
-
-            isEmailVerified:
-                user.isEmailVerified
-
-        }
+        user:
+            formatUser(user)
 
     };
 
 };
+
+
+// =====================================================
+// GOOGLE LOGIN - REDIRECT
+// =====================================================
+
+const getGoogleAuthorizationUrl = () => {
+
+    if (!GOOGLE_CLIENT_ID) {
+
+        throw createError(
+            "GOOGLE_CLIENT_ID n'est pas configuré.",
+            500
+        );
+
+    }
+
+
+    const params =
+        new URLSearchParams({
+
+            client_id:
+                GOOGLE_CLIENT_ID,
+
+            redirect_uri:
+                GOOGLE_CALLBACK_URL,
+
+            response_type:
+                "code",
+
+            scope:
+                "openid email profile",
+
+            access_type:
+                "offline",
+
+            prompt:
+                "select_account"
+
+        });
+
+
+    return (
+        "https://accounts.google.com/o/oauth2/v2/auth?" +
+        params.toString()
+    );
+
+};
+
+
+// =====================================================
+// GOOGLE TOKEN
+// =====================================================
+
+const exchangeGoogleCode = async (
+    code
+) => {
+
+    if (!GOOGLE_CLIENT_ID) {
+
+        throw createError(
+            "GOOGLE_CLIENT_ID n'est pas configuré.",
+            500
+        );
+
+    }
+
+
+    if (!GOOGLE_CLIENT_SECRET) {
+
+        throw createError(
+            "GOOGLE_CLIENT_SECRET n'est pas configuré.",
+            500
+        );
+
+    }
+
+
+    const body =
+        new URLSearchParams({
+
+            code,
+
+            client_id:
+                GOOGLE_CLIENT_ID,
+
+            client_secret:
+                GOOGLE_CLIENT_SECRET,
+
+            redirect_uri:
+                GOOGLE_CALLBACK_URL,
+
+            grant_type:
+                "authorization_code"
+
+        });
+
+
+    const response =
+        await fetch(
+            "https://oauth2.googleapis.com/token",
+            {
+
+                method: "POST",
+
+                headers: {
+
+                    "Content-Type":
+                        "application/x-www-form-urlencoded"
+
+                },
+
+                body:
+                    body.toString()
+
+            }
+        );
+
+
+    if (!response.ok) {
+
+        const text =
+            await response.text();
+
+        console.error(
+            "GOOGLE TOKEN ERROR:",
+            text
+        );
+
+        throw createError(
+            "Impossible d'obtenir le token Google.",
+            401,
+            "GOOGLE_TOKEN_ERROR"
+        );
+
+    }
+
+
+    return response.json();
+
+};
+
+
+// =====================================================
+// GOOGLE USER
+// =====================================================
+
+const getGoogleUser = async (
+    accessToken
+) => {
+
+    const response =
+        await fetch(
+            "https://www.googleapis.com/oauth2/v2/userinfo",
+            {
+
+                headers: {
+
+                    Authorization:
+                        `Bearer ${accessToken}`
+
+                }
+
+            }
+        );
+
+
+    if (!response.ok) {
+
+        const text =
+            await response.text();
+
+        console.error(
+            "GOOGLE USER ERROR:",
+            text
+        );
+
+        throw createError(
+            "Impossible de récupérer le profil Google.",
+            401,
+            "GOOGLE_USER_ERROR"
+        );
+
+    }
+
+
+    return response.json();
+
+};
+
+
+// =====================================================
+// GOOGLE LOGIN COMPLET
+// =====================================================
+
+const loginWithGoogle = async (
+    code
+) => {
+
+    try {
+
+        console.log(
+            "🔐 GOOGLE OAUTH"
+        );
+
+
+        const googleTokens =
+            await exchangeGoogleCode(
+                code
+            );
+
+
+        console.log(
+            "✅ TOKENS GOOGLE REÇUS"
+        );
+
+
+        const googleUser =
+            await getGoogleUser(
+                googleTokens.access_token
+            );
+
+
+        console.log(
+            "GOOGLE USER :",
+            googleUser
+        );
+
+
+        const normalizedEmail =
+            googleUser.email
+                .trim()
+                .toLowerCase();
+
+
+        const existingUser =
+            await User.findOne({
+                email: normalizedEmail
+            });
+
+
+        // =================================================
+        // UTILISATEUR EXISTANT
+        // =================================================
+
+        if (existingUser) {
+
+            console.log(
+                "✅ EMAIL GOOGLE EXISTE DÉJÀ"
+            );
+
+
+            /*
+             * Si le compte existe déjà,
+             * on se connecte directement.
+             */
+
+            existingUser.isEmailVerified =
+                true;
+
+
+            /*
+             * On peut récupérer l'image Google
+             * uniquement si l'utilisateur n'en possède pas.
+             */
+
+            if (
+                !existingUser.profileImage &&
+                googleUser.picture
+            ) {
+
+                existingUser.profileImage =
+                    googleUser.picture;
+
+            }
+
+
+            await existingUser.save();
+
+
+            const token =
+                generateJWT(
+                    existingUser
+                );
+
+
+            return {
+
+                type:
+                    "LOGIN",
+
+                token,
+
+                user:
+                    formatUser(
+                        existingUser
+                    )
+
+            };
+
+        }
+
+
+        // =================================================
+        // NOUVEL UTILISATEUR
+        // =================================================
+
+        console.log(
+            "🆕 NOUVEL EMAIL GOOGLE"
+        );
+
+
+        /*
+         * IMPORTANT :
+         *
+         * On NE crée PAS le User maintenant.
+         *
+         * On crée uniquement un token temporaire.
+         */
+
+
+        const googleRegistrationToken =
+            crypto
+                .randomBytes(32)
+                .toString("hex");
+
+
+        const googleRegistrationExpires =
+            new Date(
+                Date.now() +
+                15 * 60 * 1000
+            );
+
+
+        /*
+         * Le token contient les informations Google.
+         *
+         * Pour un projet plus sécurisé,
+         * on peut aussi utiliser Redis ou une collection dédiée.
+         */
+
+
+        const temporaryGoogleData = {
+
+            token:
+                googleRegistrationToken,
+
+            email:
+                normalizedEmail,
+
+            firstname:
+                googleUser.given_name ||
+                "",
+
+            lastname:
+                googleUser.family_name ||
+                "",
+
+            picture:
+                googleUser.picture ||
+                "",
+
+            googleId:
+                googleUser.id,
+
+            expiresAt:
+                googleRegistrationExpires
+
+        };
+
+
+        /*
+         * Stockage temporaire en mémoire.
+         *
+         * Pour le développement local c'est suffisant.
+         */
+
+        googlePendingRegistrations.set(
+            googleRegistrationToken,
+            temporaryGoogleData
+        );
+
+
+        return {
+
+            type:
+                "COMPLETE_PROFILE",
+
+            registrationToken:
+                googleRegistrationToken,
+
+            googleUser: {
+
+                email:
+                    normalizedEmail,
+
+                firstname:
+                    googleUser.given_name ||
+                    "",
+
+                lastname:
+                    googleUser.family_name ||
+                    "",
+
+                picture:
+                    googleUser.picture ||
+                    ""
+
+            }
+
+        };
+
+    }
+
+    catch (error) {
+
+        console.error(
+            "GOOGLE SERVICE ERROR:",
+            error
+        );
+
+
+        if (error.statusCode) {
+            throw error;
+        }
+
+
+        throw createError(
+            "Impossible de finaliser la connexion Google.",
+            500,
+            "GOOGLE_LOGIN_ERROR"
+        );
+
+    }
+
+};
+
+
+// =====================================================
+// GOOGLE PENDING REGISTRATIONS
+// =====================================================
+
+const googlePendingRegistrations =
+    new Map();
+
+
+// =====================================================
+// NETTOYAGE DES TOKENS GOOGLE
+// =====================================================
+
+const cleanGooglePendingRegistrations = () => {
+
+    const now =
+        Date.now();
+
+
+    for (
+        const [
+            token,
+            data
+        ]
+        of googlePendingRegistrations
+    ) {
+
+        if (
+            data.expiresAt.getTime() <
+            now
+        ) {
+
+            googlePendingRegistrations.delete(
+                token
+            );
+
+        }
+
+    }
+
+};
+
+
+setInterval(
+    cleanGooglePendingRegistrations,
+    60 * 1000
+);
+
+
+// =====================================================
+// FINALISER INSCRIPTION GOOGLE
+// =====================================================
+
+const completeGoogleRegistration =
+    async (
+        registrationToken,
+        userData,
+        profileImage = null
+    ) => {
+
+        if (
+            !registrationToken ||
+            !registrationToken.trim()
+        ) {
+
+            throw createError(
+                "Token d'inscription Google manquant.",
+                400
+            );
+
+        }
+
+
+        const googleData =
+            googlePendingRegistrations.get(
+                registrationToken.trim()
+            );
+
+
+        if (!googleData) {
+
+            throw createError(
+                "La session Google est invalide ou expirée.",
+                400,
+                "GOOGLE_REGISTRATION_EXPIRED"
+            );
+
+        }
+
+
+        if (
+            googleData.expiresAt <
+            new Date()
+        ) {
+
+            googlePendingRegistrations.delete(
+                registrationToken.trim()
+            );
+
+
+            throw createError(
+                "La session Google est expirée.",
+                400,
+                "GOOGLE_REGISTRATION_EXPIRED"
+            );
+
+        }
+
+
+        const {
+
+            birthdate,
+            gender,
+            mainActivity,
+            country
+
+        } = userData;
+
+
+        // =================================================
+        // VALIDATION
+        // =================================================
+
+        if (!birthdate) {
+
+            throw createError(
+                "La date de naissance est obligatoire."
+            );
+
+        }
+
+
+        const birthDateObject =
+            new Date(
+                `${birthdate}T00:00:00`
+            );
+
+
+        if (
+            Number.isNaN(
+                birthDateObject.getTime()
+            )
+        ) {
+
+            throw createError(
+                "Date de naissance invalide."
+            );
+
+        }
+
+
+        if (
+            birthDateObject > new Date()
+        ) {
+
+            throw createError(
+                "La date de naissance ne peut pas être dans le futur."
+            );
+
+        }
+
+
+        const age =
+            calculateAge(
+                birthDateObject
+            );
+
+
+        if (age < 18) {
+
+            throw createError(
+                "L'inscription est réservée aux personnes âgées de 18 ans ou plus."
+            );
+
+        }
+
+
+        const allowedGenders = [
+            "homme",
+            "femme",
+            "non-binaire"
+        ];
+
+
+        if (!gender) {
+
+            throw createError(
+                "Le sexe est obligatoire."
+            );
+
+        }
+
+
+        if (
+            !allowedGenders.includes(
+                gender
+            )
+        ) {
+
+            throw createError(
+                "Genre invalide."
+            );
+
+        }
+
+
+        if (!mainActivity) {
+
+            throw createError(
+                "L'activité principale est obligatoire."
+            );
+
+        }
+
+
+        if (!country) {
+
+            throw createError(
+                "Le pays est obligatoire."
+            );
+
+        }
+
+
+        // =================================================
+        // DOUBLE VÉRIFICATION EMAIL
+        // =================================================
+
+        const existingUser =
+            await User.findOne({
+
+                email:
+                    googleData.email
+
+            });
+
+
+        if (existingUser) {
+
+            googlePendingRegistrations.delete(
+                registrationToken.trim()
+            );
+
+
+            const token =
+                generateJWT(
+                    existingUser
+                );
+
+
+            return {
+
+                type:
+                    "LOGIN",
+
+                token,
+
+                user:
+                    formatUser(
+                        existingUser
+                    )
+
+            };
+
+        }
+
+
+        // =================================================
+        // MOT DE PASSE GOOGLE
+        // =================================================
+
+        /*
+         * Le compte Google n'utilise pas
+         * le mot de passe classique.
+         *
+         * Mais ton modèle User demande
+         * actuellement password required.
+         *
+         * On génère donc un mot de passe
+         * aléatoire et sécurisé.
+         */
+
+        const randomPassword =
+            crypto
+                .randomBytes(48)
+                .toString("hex");
+
+
+        const hashedPassword =
+            await bcrypt.hash(
+                randomPassword,
+                12
+            );
+
+
+        // =================================================
+        // IMAGE
+        // =================================================
+
+        let profileImagePath =
+            googleData.picture ||
+            null;
+
+
+        if (profileImage) {
+
+            profileImagePath =
+                `/uploads/${profileImage.filename}`;
+
+        }
+
+
+        // =================================================
+        // CRÉATION USER
+        // =================================================
+
+        const user =
+            await User.create({
+
+                firstname:
+                    googleData.firstname,
+
+                lastname:
+                    googleData.lastname,
+
+                email:
+                    googleData.email,
+
+                birthdate:
+                    birthDateObject,
+
+                password:
+                    hashedPassword,
+
+                gender,
+
+                mainActivity,
+
+                country,
+
+                profileImage:
+                    profileImagePath,
+
+                role:
+                    "user",
+
+                /*
+                 * Google a déjà vérifié l'adresse.
+                 */
+
+                isEmailVerified:
+                    true,
+
+                emailVerificationToken:
+                    null,
+
+                emailVerificationExpires:
+                    null
+
+            });
+
+
+        console.log(
+            "✅ COMPTE GOOGLE CRÉÉ"
+        );
+
+
+        googlePendingRegistrations.delete(
+            registrationToken.trim()
+        );
+
+
+        const token =
+            generateJWT(
+                user
+            );
+
+
+        return {
+
+            type:
+                "LOGIN",
+
+            token,
+
+            user:
+                formatUser(user)
+
+        };
+
+    };
+
+
 // =====================================================
 // VERIFY EMAIL
 // =====================================================
 
-const verifyEmail = async (verificationToken) => {
-
-    // =================================================
-    // VALIDATION
-    // =================================================
+const verifyEmail = async (
+    verificationToken
+) => {
 
     if (
         typeof verificationToken !== "string" ||
@@ -760,193 +1466,105 @@ const verifyEmail = async (verificationToken) => {
     ) {
 
         throw createError(
-            "Token de vérification manquant.",
-            400,
-            "MISSING_VERIFICATION_TOKEN"
+            "Token de vérification manquant."
         );
+
     }
 
 
-    // =================================================
-    // NETTOYAGE
-    // =================================================
+    const user =
+        await User.findOne({
 
-    const token = verificationToken.trim();
+            emailVerificationToken:
+                verificationToken.trim()
 
+        });
 
-    console.log("=================================");
-    console.log("📩 VERIFY EMAIL SERVICE");
-    console.log("TOKEN REÇU :", token);
-    console.log("TOKEN LENGTH :", token.length);
-    console.log("=================================");
-
-
-    // =================================================
-    // RECHERCHE DU USER
-    // =================================================
-
-    const user = await User.findOne({
-        emailVerificationToken: token
-    });
-
-
-    // =================================================
-    // TOKEN INTROUVABLE
-    // =================================================
 
     if (!user) {
 
-        console.error("=================================");
-        console.error("❌ INVALID VERIFICATION TOKEN");
-        console.error("TOKEN :", token);
-        console.error("=================================");
-
         throw createError(
-            "Le lien de vérification est invalide ou expiré.",
-            400,
-            "INVALID_VERIFICATION_TOKEN"
+            "Le lien de vérification est invalide ou expiré."
         );
+
     }
 
 
-    // =================================================
-    // DEBUG
-    // =================================================
-
-    console.log("=================================");
-    console.log("✅ USER TROUVÉ");
-    console.log("ID :", user._id);
-    console.log("EMAIL :", user.email);
-    console.log(
-        "TOKEN DB :",
-        user.emailVerificationToken
-    );
-    console.log(
-        "TOKEN DB LENGTH :",
-        user.emailVerificationToken
-            ? user.emailVerificationToken.length
-            : 0
-    );
-    console.log(
-        "EXPIRES :",
-        user.emailVerificationExpires
-    );
-    console.log(
-        "VERIFIED :",
+    if (
         user.isEmailVerified
-    );
-    console.log("=================================");
-
-
-    // =================================================
-    // DEJA VERIFIE
-    // =================================================
-    //
-    // IMPORTANT :
-    // On vérifie AVANT l'expiration.
-    //
-    // Cela permet à un deuxième appel du frontend
-    // de recevoir une réponse SUCCESS au lieu de
-    // INVALID_VERIFICATION_TOKEN.
-    // =================================================
-
-    if (user.isEmailVerified === true) {
-
-        console.log(
-            "ℹ️ EMAIL DÉJÀ VÉRIFIÉ :",
-            user.email
-        );
+    ) {
 
         return {
 
-            id: user._id,
+            id:
+                user._id,
 
-            email: user.email,
+            email:
+                user.email,
 
-            isEmailVerified: true,
+            isEmailVerified:
+                true,
 
-            alreadyVerified: true
+            alreadyVerified:
+                true
 
         };
+
     }
 
-
-    // =================================================
-    // TOKEN EXPIRÉ
-    // =================================================
 
     if (
         !user.emailVerificationExpires ||
         user.emailVerificationExpires <= new Date()
     ) {
 
-        console.error(
-            "❌ TOKEN EXPIRED"
+        throw createError(
+            "Le lien de vérification est expiré."
         );
 
-        throw createError(
-            "Le lien de vérification est expiré.",
-            400,
-            "EMAIL_VERIFICATION_EXPIRED"
-        );
     }
 
 
-    // =================================================
-    // VALIDATION EMAIL
-    // =================================================
+    user.isEmailVerified =
+        true;
 
-    user.isEmailVerified = true;
+    user.emailVerificationToken =
+        null;
 
-
-    // =================================================
-    // IMPORTANT
-    // =================================================
-    //
-    // NE PAS SUPPRIMER IMMÉDIATEMENT :
-    //
-    // user.emailVerificationToken = null;
-    //
-    // Sinon React StrictMode peut provoquer :
-    //
-    // premier appel  -> SUCCESS
-    // deuxième appel -> INVALID TOKEN
-    //
-    // Le token expirera naturellement après 24h.
-    // =================================================
+    user.emailVerificationExpires =
+        null;
 
 
     await user.save();
 
 
-    // =================================================
-    // SUCCESS
-    // =================================================
-
-    console.log("=================================");
-    console.log("✅ EMAIL VERIFIED SUCCESSFULLY");
-    console.log("EMAIL :", user.email);
-    console.log("=================================");
-
-
     return {
 
-        id: user._id,
+        id:
+            user._id,
 
-        email: user.email,
+        email:
+            user.email,
 
-        isEmailVerified: true,
+        isEmailVerified:
+            true,
 
-        alreadyVerified: false
+        alreadyVerified:
+            false
 
     };
+
 };
+
+
 // =====================================================
 // RESEND VERIFICATION
 // =====================================================
 
 const generateNewVerificationToken =
-    async (email) => {
+    async (
+        email
+    ) => {
 
         if (
             typeof email !== "string" ||
@@ -954,8 +1572,7 @@ const generateNewVerificationToken =
         ) {
 
             throw createError(
-                "L'adresse email est obligatoire.",
-                400
+                "L'adresse email est obligatoire."
             );
 
         }
@@ -973,7 +1590,6 @@ const generateNewVerificationToken =
             });
 
 
-        // Ne pas révéler si l'utilisateur existe
         if (!user) {
             return true;
         }
@@ -1011,41 +1627,17 @@ const generateNewVerificationToken =
             `${FRONTEND_URL}/verify-email/${token}`;
 
 
-        console.log("=================================");
-        console.log("🔄 RESEND VERIFICATION");
-        console.log("EMAIL :", user.email);
-        console.log("TOKEN :", token);
-        console.log("URL :", verificationUrl);
-        console.log("=================================");
+        await emailService.sendVerificationEmail({
 
+            email:
+                user.email,
 
-        try {
+            firstname:
+                user.firstname,
 
-            await emailService.sendVerificationEmail({
+            verificationUrl
 
-                email:
-                    user.email,
-
-                firstname:
-                    user.firstname,
-
-                verificationUrl
-
-            });
-
-        } catch (error) {
-
-            console.error(
-                "❌ RESEND EMAIL ERROR :",
-                error
-            );
-
-            throw createError(
-                "Impossible d'envoyer l'email de vérification.",
-                500
-            );
-
-        }
+        });
 
 
         return true;
@@ -1058,20 +1650,9 @@ const generateNewVerificationToken =
 // =====================================================
 
 const createPasswordResetToken =
-    async (email) => {
-
-        if (
-            typeof email !== "string" ||
-            !email.trim()
-        ) {
-
-            throw createError(
-                "L'adresse email est obligatoire.",
-                400
-            );
-
-        }
-
+    async (
+        email
+    ) => {
 
         const normalizedEmail =
             email
@@ -1144,14 +1725,10 @@ const resetPassword = async (
     newPassword
 ) => {
 
-    if (
-        typeof resetToken !== "string" ||
-        !resetToken.trim()
-    ) {
+    if (!resetToken) {
 
         throw createError(
-            "Token de réinitialisation manquant.",
-            400
+            "Token de réinitialisation manquant."
         );
 
     }
@@ -1160,8 +1737,7 @@ const resetPassword = async (
     if (!newPassword) {
 
         throw createError(
-            "Le nouveau mot de passe est obligatoire.",
-            400
+            "Le nouveau mot de passe est obligatoire."
         );
 
     }
@@ -1170,8 +1746,7 @@ const resetPassword = async (
     if (newPassword.length < 8) {
 
         throw createError(
-            "Le nouveau mot de passe doit contenir au moins 8 caractères.",
-            400
+            "Le nouveau mot de passe doit contenir au moins 8 caractères."
         );
 
     }
@@ -1193,8 +1768,7 @@ const resetPassword = async (
     if (!user) {
 
         throw createError(
-            "Le lien de réinitialisation est invalide ou expiré.",
-            400
+            "Le lien de réinitialisation est invalide ou expiré."
         );
 
     }
@@ -1223,6 +1797,36 @@ const resetPassword = async (
 
 
 // =====================================================
+// CURRENT USER
+// =====================================================
+
+const getCurrentUser = async (
+    userId
+) => {
+
+    const user =
+        await User.findById(
+            userId
+        ).select("-password");
+
+
+    if (!user) {
+
+        throw createError(
+            "Utilisateur introuvable.",
+            404,
+            "USER_NOT_FOUND"
+        );
+
+    }
+
+
+    return user;
+
+};
+
+
+// =====================================================
 // EXPORT
 // =====================================================
 
@@ -1232,12 +1836,20 @@ export default {
 
     login,
 
+    getGoogleAuthorizationUrl,
+
+    loginWithGoogle,
+
+    completeGoogleRegistration,
+
     verifyEmail,
 
     generateNewVerificationToken,
 
     createPasswordResetToken,
 
-    resetPassword
+    resetPassword,
+
+    getCurrentUser
 
 };

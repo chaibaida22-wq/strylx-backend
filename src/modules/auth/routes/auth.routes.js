@@ -1,8 +1,14 @@
 import express from "express";
 
-import authController from "../controllers/auth.controller.js";
+import authController
+    from "../controllers/auth.controller.js";
 
-const router = express.Router();
+import upload
+    from "../../../middlewares/upload.middleware.js";
+
+
+const router =
+    express.Router();
 
 
 // =====================================================
@@ -10,8 +16,13 @@ const router = express.Router();
 // =====================================================
 
 router.post(
+
     "/register",
+
+    upload.single("profileImage"),
+
     authController.register
+
 );
 
 
@@ -20,8 +31,11 @@ router.post(
 // =====================================================
 
 router.post(
+
     "/login",
+
     authController.login
+
 );
 
 
@@ -30,8 +44,11 @@ router.post(
 // =====================================================
 
 router.get(
+
     "/verify-email/:token",
+
     authController.verifyEmail
+
 );
 
 
@@ -40,8 +57,11 @@ router.get(
 // =====================================================
 
 router.post(
+
     "/resend-verification",
+
     authController.resendVerification
+
 );
 
 
@@ -50,8 +70,11 @@ router.post(
 // =====================================================
 
 router.post(
+
     "/forgot-password",
+
     authController.forgotPassword
+
 );
 
 
@@ -60,18 +83,24 @@ router.post(
 // =====================================================
 
 router.post(
+
     "/reset-password/:token",
+
     authController.resetPassword
+
 );
 
 
 // =====================================================
-// GOOGLE LOGIN
+// GOOGLE
 // =====================================================
 
 router.get(
+
     "/google",
+
     authController.googleLogin
+
 );
 
 
@@ -80,28 +109,52 @@ router.get(
 // =====================================================
 
 router.get(
+
     "/google/callback",
+
     authController.googleCallback
+
 );
 
 
 // =====================================================
-// APPLE LOGIN
+// GOOGLE COMPLETE PROFILE
 // =====================================================
 
-router.get(
-    "/apple",
-    authController.appleLogin
+router.post(
+
+    "/google/complete-profile",
+
+    upload.single("profileImage"),
+
+    authController.completeGoogleRegistration
+
 );
 
 
 // =====================================================
-// APPLE CALLBACK
+// CURRENT USER
 // =====================================================
 
 router.get(
-    "/apple/callback",
-    authController.appleCallback
+
+    "/me",
+
+    authController.getCurrentUser
+
+);
+
+
+// =====================================================
+// LOGOUT
+// =====================================================
+
+router.post(
+
+    "/logout",
+
+    authController.logout
+
 );
 
 

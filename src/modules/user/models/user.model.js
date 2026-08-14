@@ -1,10 +1,17 @@
 import mongoose from "mongoose";
 
+
+// =====================================================
+// USER SCHEMA
+// =====================================================
+
 const userSchema = new mongoose.Schema(
+
     {
-        // =====================================================
-        // INFORMATIONS PERSONNELLES
-        // =====================================================
+
+        // =================================================
+        // IDENTITÉ
+        // =================================================
 
         firstname: {
             type: String,
@@ -26,60 +33,85 @@ const userSchema = new mongoose.Schema(
             trim: true
         },
 
-        birthdate: {
-            type: Date,
-            required: true
-        },
 
-        // =====================================================
-        // MOT DE PASSE
-        // =====================================================
+        // =================================================
+        // AUTHENTIFICATION
+        // =================================================
 
         password: {
             type: String,
-            required: true
+            required: false,
+            default: null
         },
 
-        // =====================================================
-        // GENRE
-        // =====================================================
+        provider: {
+            type: String,
+            enum: [
+                "local",
+                "google",
+                "apple"
+            ],
+            default: "local"
+        },
+
+        googleId: {
+            type: String,
+            default: null
+        },
+
+        appleId: {
+            type: String,
+            default: null
+        },
+
+
+        // =================================================
+        // INFORMATIONS PERSONNELLES
+        // =================================================
+
+        birthdate: {
+            type: Date,
+            required: false,
+            default: null
+        },
 
         gender: {
             type: String,
-            enum: {
-                values: [
-                    "homme",
-                    "femme",
-                    "autre"
-                ],
-                message: "Genre invalide."
-            },
-            required: true
+            enum: [
+                "homme",
+                "femme",
+                "non-binaire"
+            ],
+            required: false,
+            default: null
         },
-
-        // =====================================================
-        // ACTIVITÉ PRINCIPALE
-        // =====================================================
 
         mainActivity: {
             type: String,
-            required: true,
-            trim: true
+            required: false,
+            default: null
         },
-
-        // =====================================================
-        // PAYS
-        // =====================================================
 
         country: {
             type: String,
-            required: true,
-            trim: true
+            required: false,
+            default: null
         },
 
-        // =====================================================
+
+        // =================================================
+        // IMAGE
+        // =================================================
+
+        profileImage: {
+            type: String,
+            default: null
+        },
+
+
+        // =================================================
         // ROLE
-        // =====================================================
+        // =================================================
 
         role: {
             type: String,
@@ -90,9 +122,10 @@ const userSchema = new mongoose.Schema(
             default: "user"
         },
 
-        // =====================================================
+
+        // =================================================
         // EMAIL VERIFICATION
-        // =====================================================
+        // =================================================
 
         isEmailVerified: {
             type: Boolean,
@@ -109,9 +142,10 @@ const userSchema = new mongoose.Schema(
             default: null
         },
 
-        // =====================================================
-        // RESET PASSWORD
-        // =====================================================
+
+        // =================================================
+        // PASSWORD RESET
+        // =================================================
 
         resetPasswordToken: {
             type: String,
@@ -122,15 +156,51 @@ const userSchema = new mongoose.Schema(
             type: Date,
             default: null
         }
+
     },
+
     {
         timestamps: true
     }
+
 );
 
-const User = mongoose.model(
-    "User",
-    userSchema
+
+// =====================================================
+// INDEX GOOGLE
+// =====================================================
+
+userSchema.index(
+    { googleId: 1 },
+    {
+        unique: true,
+        sparse: true
+    }
 );
+
+
+// =====================================================
+// INDEX APPLE
+// =====================================================
+
+userSchema.index(
+    { appleId: 1 },
+    {
+        unique: true,
+        sparse: true
+    }
+);
+
+
+// =====================================================
+// MODEL
+// =====================================================
+
+const User =
+    mongoose.model(
+        "User",
+        userSchema
+    );
+
 
 export default User;
